@@ -20,6 +20,8 @@ DPI_RAW_CODES = {
     (code, 1): dpi for code, dpi in zip(DPI_CODE_BYTES[25:], range(5200, 10001, 200))
 }
 REPORT_RATES = (125, 250, 500, 1000)
+MOUSE_SPEED_MIN = 1
+MOUSE_SPEED_MAX = 8
 LIGHT_MODES = (
     "static",
     "breathing",
@@ -78,6 +80,20 @@ def default_profiles() -> list[Profile]:
     return [Profile() for _ in range(5)]
 
 
+def mouse_speed_to_ui(raw_speed: int) -> int:
+    """Converte o intervalo invertido do M711 para velocidade visual."""
+    if raw_speed not in range(MOUSE_SPEED_MIN, MOUSE_SPEED_MAX + 1):
+        raise ValueError("Velocidade RGB inválida para o M711.")
+    return MOUSE_SPEED_MAX + MOUSE_SPEED_MIN - raw_speed
+
+
+def mouse_speed_from_ui(visual_speed: int) -> int:
+    """Converte velocidade visual crescente para o intervalo bruto do M711."""
+    if visual_speed not in range(MOUSE_SPEED_MIN, MOUSE_SPEED_MAX + 1):
+        raise ValueError("Velocidade RGB inválida para o M711.")
+    return MOUSE_SPEED_MAX + MOUSE_SPEED_MIN - visual_speed
+
+
 def validate_profiles(profiles: list[Profile]) -> None:
     if len(profiles) != 5:
         raise ValueError("O M711 requer exatamente cinco perfis.")
@@ -94,7 +110,9 @@ def validate_profiles(profiles: list[Profile]) -> None:
             raise ValueError(f"Efeito de luz inválido no perfil {number}.")
         if len(profile.color) != 6 or any(c not in "0123456789abcdefABCDEF" for c in profile.color):
             raise ValueError(f"Cor RGB inválida no perfil {number}.")
-        if profile.brightness not in range(1, 4) or profile.speed not in range(1, 9):
+        if profile.brightness not in range(1, 4) or profile.speed not in range(
+            MOUSE_SPEED_MIN, MOUSE_SPEED_MAX + 1
+        ):
             raise ValueError(f"Brilho ou velocidade inválidos no perfil {number}.")
         if profile.scroll_speed not in range(1, 64):
             raise ValueError(f"Velocidade de rolagem inválida no perfil {number}.")
@@ -158,7 +176,7 @@ def parse(text: str) -> list[Profile]:
         speed = section.getint("speed", fallback=profile.speed)
         # O leitor do M711 às vezes devolve zero porque consulta um byte
         # diferente daquele usado na gravação. Preserve o fallback nesse caso.
-        if speed in range(1, 9):
+        if speed in range(MOUSE_SPEED_MIN, MOUSE_SPEED_MAX + 1):
             profile.speed = speed
         for level in range(5):
             raw_dpi = section.get(f"dpi{level + 1}", fallback=str(profile.dpi[level]))

@@ -7,7 +7,7 @@ binary_dir="$project_dir/.local/bin"
 rule_source="$project_dir/packaging/70-redragon-m711.rules"
 keyboard_rule_source="$project_dir/packaging/70-redragon-s118.rules"
 
-sudo dnf install -y gcc-c++ git make libusb1-devel openrgb
+sudo dnf install -y gcc-c++ git make libusb1-devel
 
 if [[ -d "$source_dir/.git" ]]; then
     git -C "$source_dir" fetch --depth 1 origin tag v3.5

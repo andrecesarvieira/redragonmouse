@@ -7,6 +7,8 @@ from redragon_control.config import (
     parse_active_profile,
     serialize,
     validate_profiles,
+    mouse_speed_from_ui,
+    mouse_speed_to_ui,
 )
 
 
@@ -56,6 +58,13 @@ class ConfigTests(unittest.TestCase):
         text = serialize(default_profiles()).replace("dpi1=500", "dpi1=X800Y900", 1)
         with self.assertRaisesRegex(ValueError, "eixos separadamente"):
             parse(text)
+
+    def test_mouse_rgb_speed_is_visually_inverted_without_changing_storage(self):
+        self.assertEqual(mouse_speed_to_ui(8), 1)
+        self.assertEqual(mouse_speed_to_ui(1), 8)
+        self.assertEqual(mouse_speed_from_ui(1), 8)
+        self.assertEqual(mouse_speed_from_ui(8), 1)
+        self.assertEqual(mouse_speed_from_ui(mouse_speed_to_ui(7)), 7)
 
 
 if __name__ == "__main__":

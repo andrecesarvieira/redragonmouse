@@ -11,9 +11,10 @@ gi.require_version("Adw", "1")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Adw, Gdk, GLib, Gtk  # noqa: E402
 
+from .apply_plan import build_apply_plan
 from .backend import BackendError, apply_profiles, device_status, read_configuration
-from .config import BUTTON_NAMES, DPI_VALUES, LIGHT_MODES, REPORT_RATES, default_profiles
-from .keyboard import KeyboardError, KEYBOARD_MODES, apply_keyboard, default_keyboard_profiles, keyboard_status, load_keyboard_profiles, save_keyboard_profiles
+from .config import BUTTON_NAMES, DPI_VALUES, LIGHT_MODES, REPORT_RATES, default_profiles, mouse_speed_from_ui, mouse_speed_to_ui
+from .keyboard import KEYBOARD_DIRECTION_MODES, KEYBOARD_SPEED_MODES, KeyboardError, KEYBOARD_MODES, apply_keyboard, default_keyboard_profiles, keyboard_status, load_keyboard_profiles, normalize_keyboard_brightness, normalize_keyboard_speed, save_keyboard_profiles
 from .macros import default_macros, load_macros, save_macros, serialize_macros
 from .persistence import load_state, save_state
 
@@ -90,7 +91,7 @@ class MainWindow(Adw.ApplicationWindow):
         for title, page, icon in NAVIGATION:
             row = Gtk.ListBoxRow(); row.page_name = page; content = Gtk.Box(spacing=12); content.append(Gtk.Image.new_from_icon_name(icon)); content.append(label(title)); row.set_child(content); self.navigation.append(row)
         side.append(self.navigation); side.append(Gtk.Box(vexpand=True))
-        side.append(label("PERFIL ATIVO", "section-kicker")); self.global_profile = Gtk.DropDown.new_from_strings([p.name for p in self.keyboard_profiles]); self.global_profile.set_selected(self.keyboard_profile_index); self.global_profile.connect("notify::selected", self._on_keyboard_profile_changed); side.append(self.global_profile)
+        side.append(label("PERFIL DO TECLADO", "section-kicker")); self.global_profile = Gtk.DropDown.new_from_strings([p.name for p in self.keyboard_profiles]); self.global_profile.set_selected(self.keyboard_profile_index); self.global_profile.connect("notify::selected", self._on_keyboard_profile_changed); side.append(self.global_profile)
         self.apply_button = Gtk.Button(label="Aplicar configurações"); self.apply_button.add_css_class("suggested-action"); self.apply_button.add_css_class("apply-button"); self.apply_button.connect("clicked", self._on_apply_all); side.append(self.apply_button)
         self.save_button = Gtk.Button(label="Salvar perfil"); self.save_button.connect("clicked", self._on_save_local); side.append(self.save_button); return side
 
@@ -116,7 +117,7 @@ class MainWindow(Adw.ApplicationWindow):
         columns = Gtk.Box(spacing=16, homogeneous=True); dpi = card(); dpi.append(label("Níveis de DPI", "title-3")); dpi.append(label("Cinco estágios alternados pelos botões DPI", "dim-label"))
         for level in range(5):
             row = Gtk.Box(spacing=10); enabled = Gtk.Switch(valign=Gtk.Align.CENTER); dropdown = Gtk.DropDown(model=Gtk.StringList.new([str(v) for v in DPI_VALUES]), hexpand=True); enabled.connect("notify::active", self._mouse_changed); dropdown.connect("notify::selected", self._mouse_changed); row.append(enabled); row.append(label(f"Nível {level+1}")); row.append(dropdown); dpi.append(row); self._dpi_rows.append((enabled, dropdown))
-        columns.append(dpi); perf = card(); perf.append(label("Desempenho e RGB", "title-3")); self.rate_dropdown = self._dropdown(perf, "Polling rate", [f"{v} Hz" for v in REPORT_RATES], self._mouse_changed); self.mouse_light_dropdown = self._dropdown(perf, "Efeito", [LIGHT_LABELS[v] for v in LIGHT_MODES], self._mouse_changed); self.mouse_color = Gtk.ColorDialogButton(dialog=Gtk.ColorDialog(title="Cor do mouse")); self.mouse_color.connect("notify::rgba", self._mouse_changed); perf.append(self._field("Cor", self.mouse_color)); self.mouse_brightness = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 3, 1); self.mouse_brightness.connect("value-changed", self._mouse_changed); perf.append(self._field("Brilho", self.mouse_brightness)); self.mouse_speed = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 8, 1); self.mouse_speed.connect("value-changed", self._mouse_changed); perf.append(self._field("Velocidade", self.mouse_speed)); columns.append(perf); content.append(columns)
+        columns.append(dpi); perf = card(); perf.append(label("Desempenho e RGB", "title-3")); self.rate_dropdown = self._dropdown(perf, "Polling rate", [f"{v} Hz" for v in REPORT_RATES], self._mouse_changed); self.mouse_light_dropdown = self._dropdown(perf, "Efeito", [LIGHT_LABELS[v] for v in LIGHT_MODES], self._mouse_changed); self.mouse_color = Gtk.ColorDialogButton(dialog=Gtk.ColorDialog(title="Cor do mouse")); self.mouse_color.connect("notify::rgba", self._mouse_changed); perf.append(self._field("Cor", self.mouse_color)); self.mouse_brightness = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 3, 1); self.mouse_brightness.connect("value-changed", self._mouse_changed); perf.append(self._field("Brilho", self.mouse_brightness)); self.mouse_speed = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 8, 1); self.mouse_speed.set_tooltip_text("1 = lenta · 8 = rápida"); self.mouse_speed.connect("value-changed", self._mouse_changed); perf.append(self._field("Velocidade", self.mouse_speed)); columns.append(perf); content.append(columns)
         mapping = card(); mapping.append(label("Mapeamento dos botões", "title-3")); mapping.append(label("Use botões, teclas, atalhos, macro1…macro15, fire ou snipe.", "dim-label")); grid = Gtk.Grid(column_spacing=18, row_spacing=10, column_homogeneous=True)
         for index, name in enumerate(BUTTON_NAMES):
             entry = Gtk.Entry(placeholder_text="Função"); entry.connect("changed", self._mouse_changed); grid.attach(self._field(BUTTON_LABELS[name], entry), index % 2, index // 2, 1, 1); self._mapping_entries[name] = entry
@@ -137,8 +138,8 @@ class MainWindow(Adw.ApplicationWindow):
 
         settings = card(); settings.add_css_class("compact-settings"); settings.append(label("Iluminação e comportamento", "title-3")); columns = Gtk.Grid(column_spacing=22, row_spacing=8, column_homogeneous=True)
         light = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8); light.append(label("EFEITO E COR", "section-kicker")); self.keyboard_mode = self._dropdown(light, "Efeito", [KEYBOARD_MODE_LABELS[v] for v in KEYBOARD_MODES], self._keyboard_changed); self.keyboard_color = Gtk.ColorDialogButton(dialog=Gtk.ColorDialog(title="Cor das teclas")); self.keyboard_color.connect("notify::rgba", self._on_keyboard_color); light.append(self._field("Cor", self.keyboard_color)); columns.attach(light, 0, 0, 1, 1)
-        levels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8); levels.append(label("INTENSIDADE", "section-kicker")); self.keyboard_brightness = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1); self.keyboard_brightness.set_draw_value(True); self.keyboard_brightness.connect("value-changed", self._keyboard_changed); levels.append(self._field("Brilho", self.keyboard_brightness)); self.keyboard_speed = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1); self.keyboard_speed.set_draw_value(True); self.keyboard_speed.connect("value-changed", self._keyboard_changed); levels.append(self._field("Velocidade", self.keyboard_speed)); columns.attach(levels, 1, 0, 1, 1)
-        behavior = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8); behavior.append(label("AÇÃO", "section-kicker")); self.direction = self._dropdown(behavior, "Direção", ["Direita", "Esquerda", "Cima", "Baixo"], self._keyboard_changed); self.key_action = Gtk.Entry(placeholder_text="Ex.: macro1, media_play ou ctrl_l+c"); behavior.append(self._field("Ação das teclas", self.key_action)); assign = Gtk.Button(label="Atribuir à seleção"); assign.connect("clicked", self._assign_key_action); behavior.append(assign); columns.attach(behavior, 2, 0, 1, 1)
+        levels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8); levels.append(label("INTENSIDADE", "section-kicker")); self.keyboard_brightness = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 25); self.keyboard_brightness.set_draw_value(True); self.keyboard_brightness.connect("value-changed", self._keyboard_changed); levels.append(self._field("Brilho", self.keyboard_brightness)); self.keyboard_speed = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 20); self.keyboard_speed.set_draw_value(True); self.keyboard_speed.connect("value-changed", self._keyboard_changed); levels.append(self._field("Velocidade", self.keyboard_speed)); columns.attach(levels, 1, 0, 1, 1)
+        behavior = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8); behavior.append(label("AÇÃO", "section-kicker")); self._direction_values = ("right", "left", "up", "down"); self.direction = self._dropdown(behavior, "Direção", ["Direita", "Esquerda", "Cima", "Baixo"], self._keyboard_changed); self.key_action = Gtk.Entry(placeholder_text="Ex.: macro1, media_play ou ctrl_l+c"); behavior.append(self._field("Ação das teclas", self.key_action)); assign = Gtk.Button(label="Atribuir à seleção"); assign.connect("clicked", self._assign_key_action); behavior.append(assign); columns.attach(behavior, 2, 0, 1, 1)
         settings.append(columns); content.append(settings); return scroll
 
     def _scroll_keyboard_top(self):
@@ -146,7 +147,7 @@ class MainWindow(Adw.ApplicationWindow):
         return GLib.SOURCE_REMOVE
 
     def _macros_page(self):
-        scroll, content = self._shell("Macros", "Edite os 15 slots disponíveis no M711 e reutilize-os no teclado"); area = Gtk.Box(spacing=16); slots = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE); slots.set_size_request(210, 420); slots.add_css_class("boxed-list"); slots.connect("row-selected", self._on_macro_selected)
+        scroll, content = self._shell("Macros do mouse", "Edite os 15 slots gravados na memória interna do M711"); area = Gtk.Box(spacing=16); slots = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE); slots.set_size_request(210, 420); slots.add_css_class("boxed-list"); slots.connect("row-selected", self._on_macro_selected)
         for i in range(15): row = Gtk.ListBoxRow(); row.macro_index = i; row.set_child(label(f"Macro {i+1}")); slots.append(row)
         self.macro_slots = slots; area.append(slots); editor = card(); editor.set_hexpand(True); self.macro_name = Gtk.Entry(placeholder_text="Nome da macro"); self.macro_name.connect("changed", self._macro_changed); editor.append(self._field("Nome", self.macro_name)); editor.append(label("Ações", "title-3")); editor.append(label("Uma por linha: down\tkey, up\tkey, delay\t10, move_left\t20…", "dim-label")); self.macro_buffer = Gtk.TextBuffer(); self.macro_buffer.connect("changed", self._macro_changed); view = Gtk.TextView(buffer=self.macro_buffer, monospace=True, vexpand=True); editor.append(view); area.append(editor); content.append(area); GLib.idle_add(lambda: (slots.select_row(slots.get_row_at_index(0)), False)[1]); return scroll
 
@@ -162,7 +163,7 @@ class MainWindow(Adw.ApplicationWindow):
         for i, (_, name, _) in enumerate(NAVIGATION):
             if name == page: self.navigation.select_row(self.navigation.get_row_at_index(i)); return
     def _refresh_status(self):
-        m, k = device_status(), keyboard_status(); self._mouse_ready = m.connected and m.accessible and bool(m.backend_path); self._keyboard_ready = k.connected and k.accessible and bool(k.openrgb_path)
+        m, k = device_status(), keyboard_status(); self._mouse_ready = m.connected and m.accessible and bool(m.backend_path); self._keyboard_ready = k.connected and k.accessible
         for chip, ready in ((self.mouse_chip, self._mouse_ready), (self.keyboard_chip, self._keyboard_ready)):
             chip.status_dot.remove_css_class("status-ok"); chip.status_dot.remove_css_class("status-error"); chip.status_dot.add_css_class("status-ok" if ready else "status-error")
         self._update_buttons()
@@ -170,11 +171,11 @@ class MainWindow(Adw.ApplicationWindow):
     def _load_mouse(self, index):
         self._loading = True; self.profile_index = index; p = self.profiles[index]
         for i, (switch, dropdown) in enumerate(self._dpi_rows): switch.set_active(p.dpi_enabled[i]); dropdown.set_selected(DPI_VALUES.index(p.dpi[i]))
-        self.rate_dropdown.set_selected(REPORT_RATES.index(p.report_rate)); self.mouse_light_dropdown.set_selected(LIGHT_MODES.index(p.light_mode)); rgba = Gdk.RGBA(); rgba.parse(f"#{p.color}"); self.mouse_color.set_rgba(rgba); self.mouse_brightness.set_value(p.brightness); self.mouse_speed.set_value(p.speed)
+        self.rate_dropdown.set_selected(REPORT_RATES.index(p.report_rate)); self.mouse_light_dropdown.set_selected(LIGHT_MODES.index(p.light_mode)); rgba = Gdk.RGBA(); rgba.parse(f"#{p.color}"); self.mouse_color.set_rgba(rgba); self.mouse_brightness.set_value(p.brightness); self.mouse_speed.set_value(mouse_speed_to_ui(p.speed))
         for name, entry in self._mapping_entries.items(): entry.set_text(p.button_mappings[name])
         self._loading = False
     def _store_mouse(self):
-        p = self.profiles[self.profile_index]; p.dpi_enabled = [s.get_active() for s, _ in self._dpi_rows]; p.dpi = [DPI_VALUES[d.get_selected()] for _, d in self._dpi_rows]; p.report_rate = REPORT_RATES[self.rate_dropdown.get_selected()]; p.light_mode = LIGHT_MODES[self.mouse_light_dropdown.get_selected()]; p.color = self._hex(self.mouse_color.get_rgba()); p.brightness = round(self.mouse_brightness.get_value()); p.speed = round(self.mouse_speed.get_value())
+        p = self.profiles[self.profile_index]; p.dpi_enabled = [s.get_active() for s, _ in self._dpi_rows]; p.dpi = [DPI_VALUES[d.get_selected()] for _, d in self._dpi_rows]; p.report_rate = REPORT_RATES[self.rate_dropdown.get_selected()]; p.light_mode = LIGHT_MODES[self.mouse_light_dropdown.get_selected()]; p.color = self._hex(self.mouse_color.get_rgba()); p.brightness = round(self.mouse_brightness.get_value()); p.speed = mouse_speed_from_ui(round(self.mouse_speed.get_value()))
         for name, entry in self._mapping_entries.items(): p.button_mappings[name] = entry.get_text().strip()
     def _mouse_changed(self, *_):
         if not self._loading: self._store_mouse(); self._mouse_dirty = True; self._update_buttons()
@@ -182,11 +183,25 @@ class MainWindow(Adw.ApplicationWindow):
         if not self._loading: self._store_mouse(); self._load_mouse(dropdown.get_selected()); self._mouse_dirty = True; self._update_buttons()
 
     def _load_keyboard(self, index):
-        self._loading = True; self.keyboard_profile_index = index; p = self.keyboard_profiles[index]; self.keyboard_mode.set_selected(KEYBOARD_MODES.index(p.mode)); rgba = Gdk.RGBA(); rgba.parse(f"#{p.color}"); self.keyboard_color.set_rgba(rgba); self.keyboard_brightness.set_value(p.brightness); self.keyboard_speed.set_value(p.speed); self.direction.set_selected(("right", "left", "up", "down").index(p.direction)); self._paint_keyboard(); self._loading = False
+        self._loading = True; self.keyboard_profile_index = index; p = self.keyboard_profiles[index]; self.keyboard_mode.set_selected(KEYBOARD_MODES.index(p.mode)); rgba = Gdk.RGBA(); rgba.parse(f"#{p.color}"); self.keyboard_color.set_rgba(rgba); self.keyboard_brightness.set_value(normalize_keyboard_brightness(p.brightness)); self.keyboard_speed.set_value(normalize_keyboard_speed(p.speed)); self._update_keyboard_control_state(p.direction); self._paint_keyboard(); self._loading = False
     def _store_keyboard(self):
-        p = self.keyboard_profiles[self.keyboard_profile_index]; p.mode = KEYBOARD_MODES[self.keyboard_mode.get_selected()]; p.color = self._hex(self.keyboard_color.get_rgba()); p.brightness = round(self.keyboard_brightness.get_value()); p.speed = round(self.keyboard_speed.get_value()); p.direction = ("right", "left", "up", "down")[self.direction.get_selected()]
-    def _keyboard_changed(self, *_):
-        if not self._loading: self._store_keyboard(); self._keyboard_dirty = True; self._paint_keyboard(); self._update_buttons()
+        p = self.keyboard_profiles[self.keyboard_profile_index]; p.mode = KEYBOARD_MODES[self.keyboard_mode.get_selected()]; p.color = self._hex(self.keyboard_color.get_rgba()); p.brightness = normalize_keyboard_brightness(round(self.keyboard_brightness.get_value())); p.speed = normalize_keyboard_speed(round(self.keyboard_speed.get_value())); p.direction = self._direction_values[self.direction.get_selected()]
+    def _update_keyboard_control_state(self, preferred_direction=None):
+        mode = KEYBOARD_MODES[self.keyboard_mode.get_selected()]
+        self.keyboard_speed.set_sensitive(mode in KEYBOARD_SPEED_MODES)
+        allowed = KEYBOARD_DIRECTION_MODES.get(mode)
+        self.direction.set_sensitive(allowed is not None)
+        values = allowed or ("right", "left", "up", "down")
+        labels = {"right": "Direita", "left": "Esquerda", "up": "Cima", "down": "Baixo"}
+        current = preferred_direction or self._direction_values[self.direction.get_selected()]
+        self._direction_values = values
+        self.direction.set_model(Gtk.StringList.new([labels[value] for value in values]))
+        self.direction.set_selected(values.index(current) if current in values else 0)
+    def _keyboard_changed(self, widget=None, *_):
+        if not self._loading:
+            if widget is self.keyboard_mode:
+                self._loading = True; self._update_keyboard_control_state(self.keyboard_profiles[self.keyboard_profile_index].direction); self._loading = False
+            self._store_keyboard(); self._keyboard_dirty = True; self._paint_keyboard(); self._update_buttons()
     def _on_keyboard_color(self, *_):
         if self._loading: return
         color = self._hex(self.keyboard_color.get_rgba()); p = self.keyboard_profiles[self.keyboard_profile_index]
@@ -245,32 +260,59 @@ class MainWindow(Adw.ApplicationWindow):
         except (OSError, ValueError) as error: self._toast(str(error))
     def _on_apply_all(self, _):
         self._store_mouse(); self._store_keyboard(); self._store_macro()
-        if not any(self.profiles[self.profile_index].dpi_enabled): self._toast("Ative ao menos um nível de DPI."); return
+        try:
+            plan = build_apply_plan(
+                mouse_dirty=self._mouse_dirty,
+                keyboard_dirty=self._keyboard_dirty,
+                macros_dirty=self._macros_dirty,
+                mouse_dpi_enabled=self.profiles[self.profile_index].dpi_enabled,
+            )
+        except ValueError as error:
+            self._toast(str(error)); return
         mice, keyboards, macros = deepcopy(self.profiles), deepcopy(self.keyboard_profiles), deepcopy(self.macros); mi, ki = self.profile_index+1, self.keyboard_profile_index
+        applied = {"mouse": False, "keyboard": False}
+
+        # Retire apenas as alterações incluídas neste snapshot. Se o usuário
+        # editar algo enquanto o backend trabalha, os callbacks tornam o estado
+        # dirty novamente e a nova alteração não é perdida.
+        if plan.mouse_settings: self._mouse_dirty = False
+        if plan.macros: self._macros_dirty = False
+        if plan.keyboard: self._keyboard_dirty = False
+
         def operation():
             errors = []
-            if self._mouse_dirty:
+            if plan.mouse:
+                save_state(mice, mi); save_macros(macros)
                 if self._mouse_ready:
-                    try: apply_profiles(mice, mi, serialize_macros(macros))
+                    try: apply_profiles(mice, mi, serialize_macros(macros)); applied["mouse"] = True
                     except Exception as e: errors.append(f"Mouse: {e}")
                 else: errors.append("Mouse: dispositivo ou permissão indisponível")
-            if self._keyboard_dirty:
+            if plan.keyboard:
+                save_keyboard_profiles(keyboards, ki)
                 if self._keyboard_ready:
-                    try: apply_keyboard(keyboards[ki])
+                    try: apply_keyboard(keyboards[ki]); applied["keyboard"] = True
                     except Exception as e: errors.append(f"Teclado: {e}")
-                else: errors.append("Teclado: instale o OpenRGB e verifique a permissão")
-            save_state(mice, mi); save_keyboard_profiles(keyboards, ki); save_macros(macros)
+                else: errors.append("Teclado: dispositivo ou permissão HID indisponível")
             if errors: raise KeyboardError("\n".join(errors))
-        def success(): self._set_clean()
-        self._background(operation, "Configurações aplicadas e salvas.", success)
-    def _set_clean(self): self._mouse_dirty = self._keyboard_dirty = self._macros_dirty = False; self._update_buttons()
-    def _background(self, operation, message, after=None):
+
+        def complete(_error):
+            if plan.mouse and not applied["mouse"]:
+                if plan.mouse_settings: self._mouse_dirty = True
+                if plan.macros: self._macros_dirty = True
+            if plan.keyboard and not applied["keyboard"]:
+                self._keyboard_dirty = True
+            self._update_buttons()
+
+        self._background(operation, "Configurações aplicadas e salvas.", complete=complete)
+    def _background(self, operation, message, after=None, complete=None):
         self._busy = True; self._update_buttons()
         def worker():
             try: operation(); GLib.idle_add(done, None)
             except Exception as error: GLib.idle_add(done, error)
         def done(error):
-            self._busy = False; self._update_buttons()
+            self._busy = False
+            if complete: complete(error)
+            self._update_buttons()
             if error: self._toast(str(error) if isinstance(error, (BackendError, KeyboardError, ValueError, OSError)) else "Falha inesperada ao configurar os dispositivos.")
             else:
                 if after: after()

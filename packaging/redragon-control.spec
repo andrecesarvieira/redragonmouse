@@ -1,6 +1,6 @@
 Name:           redragon-control
 Version:        0.2.0
-Release:        1%{?dist}
+Release:        4%{?dist}
 Summary:        Painel GNOME para o kit Redragon S118
 License:        GPL-3.0-or-later
 URL:            https://github.com/dokutan/mouse_m908
@@ -16,7 +16,6 @@ BuildRequires:  appstream
 Requires:       python3-gobject
 Requires:       gtk4
 Requires:       libadwaita
-Requires:       openrgb
 Requires(posttrans): systemd-udev
 Requires(postun): systemd-udev
 
@@ -25,7 +24,7 @@ Requires(postun): systemd-udev
 %description
 Interface GTK 4 e libadwaita para configurar o mouse M711 Cobra e o teclado
 K552 Kumara ABNT2 do kit Redragon S118. Inclui perfis, RGB, mapeamentos e
-macros, usando mouse_m908 3.5 e OpenRGB.
+macros, usando mouse_m908 3.5 e comunicação HID direta com o teclado.
 
 %prep
 %autosetup -n %{name}-%{version} -a 1
@@ -81,6 +80,15 @@ find %{buildroot}%{_datadir}/%{name} -type d -name __pycache__ -prune -exec rm -
 %{_datadir}/icons/hicolor/scalable/apps/io.github.redragon.Control.svg
 
 %changelog
+* Fri Aug 21 2026 Redragon Control contributors - 0.2.0-4
+- Corrige escalas RGB invertidas, discretiza níveis e filtra controles por efeito
+
+* Fri Aug 21 2026 Redragon Control contributors - 0.2.0-3
+- Substitui o OpenRGB por um backend HID nativo para o teclado EVision
+
+* Fri Aug 21 2026 Redragon Control contributors - 0.2.0-2
+- Isola a aplicação de mouse, teclado e macros e restringe a seleção OpenRGB
+
 * Fri Aug 21 2026 Redragon Control contributors - 0.2.0-1
 - Adiciona o teclado K552 do kit S118, RGB, mapeamentos, macros e perfis
 

@@ -3,7 +3,7 @@
 Aplicativo GNOME nativo (GTK 4 + libadwaita) para o kit **Redragon S118**:
 
 - mouse **M711 Cobra** (`04d9:fc30`);
-- teclado **K552 Kumara ABNT2** (`320f:5000`, controlador EVision).
+- teclado **K552 Kumara ABNT2** (`320f:5000`, controlador EVision via HID direto).
 
 ## Recursos
 
@@ -24,7 +24,7 @@ Aplicativo GNOME nativo (GTK 4 + libadwaita) para o kit **Redragon S118**:
 - ações e macros por tecla armazenadas no perfil;
 - perfis Principal, Jogos e Trabalho.
 
-O mouse usa o backend GPLv3 [`mouse_m908`](https://github.com/dokutan/mouse_m908), versão 3.5. O teclado usa o controlador EVision do OpenRGB. Os arquivos locais ficam em `~/.config/redragon-control` e permanecem salvos quando o aplicativo é fechado.
+O mouse usa o backend GPLv3 [`mouse_m908`](https://github.com/dokutan/mouse_m908), versão 3.5. O teclado usa comunicação HID direta com o controlador EVision, sem OpenRGB ou outro serviço externo. Os arquivos locais ficam em `~/.config/redragon-control` e permanecem salvos quando o aplicativo é fechado.
 
 ## Fedora
 
@@ -35,7 +35,7 @@ make setup
 make run
 ```
 
-O instalador adiciona regras udev restritas aos dois VID/PID e instala o OpenRGB. Reconecte os dispositivos na primeira configuração.
+O instalador adiciona regras udev restritas aos dois VID/PID. Reconecte os dispositivos na primeira configuração.
 
 Testes sem acesso ao hardware:
 
@@ -49,10 +49,10 @@ O RPM é construído em um contêiner Fedora 44 rootless:
 
 ```bash
 make rpm
-sudo dnf install ./dist/redragon-control-0.2.0-1.fc44.x86_64.rpm
+sudo dnf install ./dist/redragon-control-0.2.0-4.fc44.x86_64.rpm
 ```
 
-O pacote instala o aplicativo, a entrada no menu do GNOME, `mouse_m908`, OpenRGB como dependência e as regras udev do M711 e do K552.
+O pacote instala o aplicativo, a entrada no menu do GNOME, `mouse_m908`, o backend HID EVision integrado e as regras udev do M711 e do K552.
 
 ## Persistência
 
