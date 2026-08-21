@@ -1,0 +1,2 @@
+# Redragon M711 Cobra — acesso à configuração para o usuário da sessão local.
+SUBSYSTEM=="usb", ATTR{idVendor}=="04d9", ATTR{idProduct}=="fc30", TAG+="uaccess"

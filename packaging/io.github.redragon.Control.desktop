@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Redragon Control
+GenericName=Configuração de mouse gamer
+Comment=Configure DPI, polling rate, perfis e iluminação do Redragon M711
+Exec=redragon-control
+Icon=io.github.redragon.Control
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=Redragon;mouse;DPI;polling;RGB;
+StartupNotify=true

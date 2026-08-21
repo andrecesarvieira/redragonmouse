@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments and local runtime files
+.venv/
+venv/
+env/
+.cache/
+.local/
+
+# Build and package artifacts
+build/
+dist/
+*.egg-info/
+*.rpm
+*.tar.gz
+
+# Editors and operating systems
+.idea/
+.vscode/
+*~
+.DS_Store
