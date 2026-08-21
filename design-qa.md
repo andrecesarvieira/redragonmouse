@@ -10,11 +10,11 @@
 
 ## Full-view comparison evidence
 
-The source and implementation were placed together in one 2960 × 1050 comparison image. The final implementation preserves the source's dark GNOME layout, persistent left navigation, device state in the header, K552-focused hierarchy, full ABNT2 keyboard editor, RGB controls, profile selector and primary apply action. The larger default window keeps the complete keyboard visible without compressing the keys.
+The source and implementation were placed together in one 2960 × 1050 comparison image. The final implementation preserves the source's dark GNOME layout, persistent left navigation, device state in the header, K552-focused hierarchy, full ABNT2 keyboard editor, RGB controls, profile selector and primary apply action. The complete keyboard and the compact horizontal settings panel are visible simultaneously without scrolling.
 
 ## Focused comparison evidence
 
-The keyboard editor was checked as the critical focused region. All rows fit inside the editor card; the navigation cluster, ABNT2 characters, TKL navigation keys, rainbow progression, selection actions and card boundaries are visible and readable. A separate crop was not needed because the equal-size full-view comparison renders key labels legibly.
+The keyboard editor and lower settings panel were checked as the critical focused regions. The proportional grid fills the editor frame; all rows, the navigation cluster, ABNT2 characters, TKL navigation keys, rainbow progression and card boundaries are visible and readable. The three settings groups fit on one horizontal row. A separate crop was not needed because the equal-size full-view comparison renders labels legibly.
 
 ## Required fidelity surfaces
 
@@ -35,6 +35,11 @@ The keyboard editor was checked as the critical focused region. All rows fit ins
    - Fix: restored 42 px keys and used the larger source-proportioned window.
 3. Final capture — passed.
    - Post-fix evidence: `/mnt/NVME_Projetos/MouseKeyboard/design/comparison-keyboard.png` shows the entire keyboard and the main RGB/behavior controls within the intended viewport.
+4. User screenshot follow-up — blocked, then passed after revision.
+   - P1: the lower settings cards exceeded the viewport and required scrolling.
+   - P2: fixed-width keys occupied only part of the editor frame, leaving excessive empty space on the right.
+   - Fix: consolidated illumination, intensity and action controls into one horizontal card; moved selection actions into the editor header; replaced fixed key rows with a proportional 72-column grid.
+   - Post-fix evidence: `/mnt/NVME_Projetos/MouseKeyboard/design/comparison-keyboard.png` shows all primary controls and a full-width keyboard in the 1480 × 1050 viewport.
 
 ## Findings
 
