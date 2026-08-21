@@ -1,0 +1,4 @@
+# Redragon S118 / K552 ABNT2 (EVision 320f:5000).
+# USB e hidraw ficam disponíveis somente para o usuário da sessão local.
+SUBSYSTEM=="usb", ATTR{idVendor}=="320f", ATTR{idProduct}=="5000", TAG+="uaccess"
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="320f", ATTRS{idProduct}=="5000", TAG+="uaccess"

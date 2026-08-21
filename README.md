@@ -1,35 +1,43 @@
 # Redragon Control para Linux
 
-Painel GTK nativo para configurar o **Redragon M711 Cobra** (`04d9:fc30`) no Linux.
+Aplicativo GNOME nativo (GTK 4 + libadwaita) para o kit **Redragon S118**:
 
-## Recursos do primeiro MVP
+- mouse **M711 Cobra** (`04d9:fc30`);
+- teclado **K552 Kumara ABNT2** (`320f:5000`, controlador EVision).
 
-- cinco perfis gravados na memória interna;
-- cinco níveis de DPI por perfil, de 100 a 10.000 DPI;
+## Recursos
+
+### Mouse M711
+
+- cinco perfis na memória interna;
+- cinco níveis de DPI, de 100 a 10.000 DPI;
 - polling rate de 125, 250, 500 ou 1000 Hz;
-- efeito, cor, brilho e velocidade da iluminação RGB;
-- leitura automática das configurações atuais ao abrir e validação antes de aplicar;
-- detecção automática do mouse e diagnóstico de permissão.
+- RGB, brilho e velocidade;
+- dez controles programáveis, incluindo teclas, atalhos, fire, snipe e macros;
+- 15 slots de macro.
 
-O acesso USB usa o projeto GPLv3 [`mouse_m908`](https://github.com/dokutan/mouse_m908), versão 3.5, que possui suporte parcial ao M711. A interface não envia pacotes USB por conta própria.
+### Teclado K552
+
+- efeitos RGB do firmware EVision;
+- cor, brilho, velocidade e direção;
+- editor visual por tecla;
+- ações e macros por tecla armazenadas no perfil;
+- perfis Principal, Jogos e Trabalho.
+
+O mouse usa o backend GPLv3 [`mouse_m908`](https://github.com/dokutan/mouse_m908), versão 3.5. O teclado usa o controlador EVision do OpenRGB. Os arquivos locais ficam em `~/.config/redragon-control` e permanecem salvos quando o aplicativo é fechado.
 
 ## Fedora
 
-Instale/compile o backend e a regra udev restrita ao M711:
+Para preparar o ambiente de desenvolvimento:
 
 ```bash
 make setup
-```
-
-O script mostra os comandos `sudo` normalmente e instala o binário somente em `.local/bin` dentro deste projeto. Depois, desconecte e reconecte o mouse se necessário.
-
-Execute o painel:
-
-```bash
 make run
 ```
 
-Rode os testes sem acessar o hardware:
+O instalador adiciona regras udev restritas aos dois VID/PID e instala o OpenRGB. Reconecte os dispositivos na primeira configuração.
+
+Testes sem acesso ao hardware:
 
 ```bash
 make test
@@ -37,25 +45,19 @@ make test
 
 ## Pacote RPM
 
-Gere o RPM em um contêiner Fedora 44 rootless, sem instalar compiladores no sistema:
+O RPM é construído em um contêiner Fedora 44 rootless:
 
 ```bash
 make rpm
-# ou, caso o comando make ainda não esteja instalado:
-bash scripts/build-rpm.sh
-sudo dnf install ./dist/redragon-control-0.1.0-3.fc44.*.rpm
+sudo dnf install ./dist/redragon-control-0.2.0-1.fc44.x86_64.rpm
 ```
 
-O pacote instala a entrada **Redragon Control** no menu do GNOME, o backend em
-`/usr/libexec/redragon-control` e a regra de acesso USB. Reconecte o mouse após
-a primeira instalação.
+O pacote instala o aplicativo, a entrada no menu do GNOME, `mouse_m908`, OpenRGB como dependência e as regras udev do M711 e do K552.
+
+## Persistência
+
+O botão **Salvar perfil** guarda uma cópia local sem acessar o hardware. **Aplicar configurações** envia as alterações aos dispositivos e também atualiza a cópia local. Os perfis do M711 são gravados na memória interna; os efeitos compatíveis do K552 são armazenados automaticamente pelo controlador EVision.
 
 ## Segurança
 
-O painel só grava no dispositivo após um clique explícito em **Aplicar**. Não desative todos os níveis de DPI: o próprio aplicativo bloqueia essa configuração. O suporte do backend ao M711 é classificado como parcial; mantenha outro mouse disponível durante os primeiros testes.
-
-O backend grava o bloco completo de configurações. Como remapeamento ainda não aparece nesta interface, **mapeamentos personalizados de botões podem voltar ao padrão** ao aplicar este MVP.
-
-## Próximos passos
-
-O protocolo também permite remapeamento de botões e macros. Eles ficaram fora deste MVP para que a primeira validação no hardware seja pequena e recuperável.
+Nenhum pacote USB é enviado sem um clique explícito em **Aplicar configurações**. As regras udev usam `uaccess`, liberando o hardware somente ao usuário da sessão local.

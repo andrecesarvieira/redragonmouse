@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Redragon Control
-GenericName=Configuração de mouse gamer
-Comment=Configure DPI, polling rate, perfis e iluminação do Redragon M711
+GenericName=Configuração de periféricos gamer
+Comment=Configure o mouse M711 e o teclado K552 do kit Redragon S118
 Exec=redragon-control
 Icon=io.github.redragon.Control
 Terminal=false
 Categories=Settings;HardwareSettings;
-Keywords=Redragon;mouse;DPI;polling;RGB;
+Keywords=Redragon;mouse;teclado;keyboard;S118;K552;DPI;polling;RGB;macros;
 StartupNotify=true

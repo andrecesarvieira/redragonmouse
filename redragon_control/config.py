@@ -34,6 +34,32 @@ LIGHT_MODES = (
     "off",
 )
 
+BUTTON_NAMES = (
+    "button_left",
+    "button_right",
+    "button_middle",
+    "button_backward",
+    "button_forward",
+    "button_dpi_up",
+    "button_dpi_down",
+    "button_lightmode",
+    "scroll_up",
+    "scroll_down",
+)
+
+DEFAULT_BUTTON_MAPPINGS = {
+    "button_left": "left",
+    "button_right": "right",
+    "button_middle": "middle",
+    "button_backward": "backward",
+    "button_forward": "forward",
+    "button_dpi_up": "dpi+",
+    "button_dpi_down": "dpi-",
+    "button_lightmode": "led_mode_switch",
+    "scroll_up": "scroll_up",
+    "scroll_down": "scroll_down",
+}
+
 
 @dataclass(slots=True)
 class Profile:
@@ -44,6 +70,8 @@ class Profile:
     color: str = "ff2020"
     brightness: int = 3
     speed: int = 4
+    scroll_speed: int = 1
+    button_mappings: dict[str, str] = field(default_factory=lambda: DEFAULT_BUTTON_MAPPINGS.copy())
 
 
 def default_profiles() -> list[Profile]:
@@ -68,6 +96,12 @@ def validate_profiles(profiles: list[Profile]) -> None:
             raise ValueError(f"Cor RGB inválida no perfil {number}.")
         if profile.brightness not in range(1, 4) or profile.speed not in range(1, 9):
             raise ValueError(f"Brilho ou velocidade inválidos no perfil {number}.")
+        if profile.scroll_speed not in range(1, 64):
+            raise ValueError(f"Velocidade de rolagem inválida no perfil {number}.")
+        if set(profile.button_mappings) != set(BUTTON_NAMES):
+            raise ValueError(f"Mapeamento de botões incompleto no perfil {number}.")
+        if any(not value.strip() for value in profile.button_mappings.values()):
+            raise ValueError(f"Mapeamento de botão vazio no perfil {number}.")
 
 
 def serialize(profiles: list[Profile], active_profile: int | None = None) -> str:
@@ -86,12 +120,15 @@ def serialize(profiles: list[Profile], active_profile: int | None = None) -> str
                 f"color={profile.color.lower()}",
                 f"brightness={profile.brightness}",
                 f"speed={profile.speed}",
+                f"scrollspeed={profile.scroll_speed:x}",
                 f"report_rate={profile.report_rate}",
             ]
         )
         for level, (dpi, enabled) in enumerate(zip(profile.dpi, profile.dpi_enabled), 1):
             lines.append(f"dpi{level}_enable={int(enabled)}")
             lines.append(f"dpi{level}={dpi}")
+        for button in BUTTON_NAMES:
+            lines.append(f"{button}={profile.button_mappings[button]}")
         lines.append("")
     return "\n".join(lines)
 
@@ -114,6 +151,10 @@ def parse(text: str) -> list[Profile]:
         profile.light_mode = section.get("lightmode", fallback=profile.light_mode)
         profile.color = section.get("color", fallback=profile.color).lstrip("#")
         profile.brightness = section.getint("brightness", fallback=profile.brightness)
+        try:
+            profile.scroll_speed = int(section.get("scrollspeed", fallback="1"), 16)
+        except ValueError:
+            profile.scroll_speed = 1
         speed = section.getint("speed", fallback=profile.speed)
         # O leitor do M711 às vezes devolve zero porque consulta um byte
         # diferente daquele usado na gravação. Preserve o fallback nesse caso.
@@ -147,6 +188,10 @@ def parse(text: str) -> list[Profile]:
                 )
             profile.dpi_enabled[level] = section.getboolean(
                 f"dpi{level + 1}_enable", fallback=profile.dpi_enabled[level]
+            )
+        for button in BUTTON_NAMES:
+            profile.button_mappings[button] = section.get(
+                button, fallback=profile.button_mappings[button]
             )
     validate_profiles(profiles)
     return profiles

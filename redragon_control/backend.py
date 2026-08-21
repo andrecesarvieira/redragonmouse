@@ -96,7 +96,7 @@ def read_configuration() -> tuple[list[Profile], int]:
     return parse(output), parse_active_profile(output)
 
 
-def apply_profiles(profiles: list[Profile], active_profile: int) -> None:
+def apply_profiles(profiles: list[Profile], active_profile: int, macro_text: str = "") -> None:
     if active_profile not in range(1, 6):
         raise ValueError("Perfil ativo inválido.")
     config = serialize(profiles)
@@ -104,8 +104,19 @@ def apply_profiles(profiles: list[Profile], active_profile: int) -> None:
     try:
         with tempfile.NamedTemporaryFile("w", suffix=".ini", encoding="utf-8", delete=False) as handle:
             handle.write(config)
+            if macro_text:
+                handle.write("\n")
+                handle.write(macro_text)
+                handle.write("\n")
             temporary_name = handle.name
-        _run("--config", temporary_name, "--profile", str(active_profile), timeout=35)
+        # O mesmo arquivo contém os 15 slots de macro. Passá-lo também em
+        # --macro evita que o backend grave apenas perfis e deixe macros antigas.
+        _run(
+            "--config", temporary_name,
+            "--macro", temporary_name,
+            "--profile", str(active_profile),
+            timeout=50,
+        )
     finally:
         if temporary_name:
             Path(temporary_name).unlink(missing_ok=True)

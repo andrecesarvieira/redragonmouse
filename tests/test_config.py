@@ -33,6 +33,8 @@ class ConfigTests(unittest.TestCase):
     def test_serialized_config_has_all_profiles(self):
         text = serialize(default_profiles())
         self.assertEqual(text.count("[profile"), 5)
+        self.assertIn("button_forward=forward", text)
+        self.assertIn("scrollspeed=1", text)
 
     def test_active_profile_round_trip(self):
         text = serialize(default_profiles(), active_profile=4)

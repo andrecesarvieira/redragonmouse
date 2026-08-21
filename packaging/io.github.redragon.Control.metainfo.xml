@@ -4,20 +4,23 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Redragon Control</name>
-  <summary>Configure o mouse Redragon M711 no GNOME</summary>
+  <summary>Configure o kit Redragon S118 no GNOME</summary>
   <developer id="io.github.redragon">
     <name>Redragon Control contributors</name>
   </developer>
   <url type="homepage">https://github.com/dokutan/mouse_m908</url>
   <description>
-    <p>Aplicativo GTK e libadwaita para configurar os cinco perfis internos,
-    níveis de DPI, polling rate e iluminação RGB do Redragon M711 Cobra.</p>
+    <p>Aplicativo GTK e libadwaita para configurar o mouse M711 Cobra e o
+    teclado K552 Kumara do kit Redragon S118, incluindo perfis, DPI,
+    polling rate, RGB, mapeamentos e macros.</p>
   </description>
   <launchable type="desktop-id">io.github.redragon.Control.desktop</launchable>
   <provides>
     <modalias>usb:v04D9pFC30d*</modalias>
+    <modalias>usb:v320Fp5000d*</modalias>
   </provides>
   <releases>
+    <release version="0.2.0" date="2026-08-21"/>
     <release version="0.1.0" date="2026-08-17"/>
   </releases>
   <content_rating type="oars-1.1"/>
