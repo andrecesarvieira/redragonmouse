@@ -5,6 +5,16 @@ Aplicativo GNOME nativo (GTK 4 + libadwaita) para o kit **Redragon S118**:
 - mouse **M711 Cobra** (`04d9:fc30`);
 - teclado **K552 Kumara ABNT2** (`320f:5000`, controlador EVision via HID direto).
 
+## Capturas de tela
+
+### Mouse M711 Cobra
+
+![Configurações de DPI, polling rate, RGB e botões do mouse M711](design/screenshot-mouse.png)
+
+### Teclado K552 Kumara
+
+![Editor RGB por tecla e controles de iluminação do teclado K552](design/screenshot-keyboard.png)
+
 ## Recursos
 
 ### Mouse M711
